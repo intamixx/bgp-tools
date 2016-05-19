@@ -22,6 +22,28 @@ else:
     from urllib2 import urlopen
     import urlparse
 
+def get_file(weburl):
+        try:
+                urlpath = urlopen(weburl)
+        except urllib2.HTTPError, err:
+                print ("Error URL Lookup: {}: {}".format(weburl,err.code))
+                sys.exit(1)
+        print ("Weburl is {}".format(weburl))
+        string = urlpath.read().decode('utf-8')
+        pattern = re.compile('<a href=\"(\w*-\w*-\w*-\w*.pfx2as.gz)\">') #the pattern
+        pfx_filelist = pattern.findall(string)
+
+        if pfx_filelist:
+                latest_pfx_file = pfx_filelist.pop()
+                print("Found %s" % latest_pfx_file)
+                download_url = "{}/{}".format(weburl, latest_pfx_file)
+                pfx_file = download_file(download_url)
+                gzfilelist = ['/'.join([os_path, latest_pfx_file])]
+                return gzfilelist
+        else:
+                print ("No routeviews found under {}".format(weburl))
+                sys.exit(1)
+
 def download_file(url, desc=None):
     u = urllib2.urlopen(url)
 
@@ -68,45 +90,9 @@ if __name__ == '__main__':
         gzfilelist = []
 
         ipv4_urlweb = "http://data.caida.org/datasets/routing/routeviews-prefix2as/{}/{}".format(year,month)
-        try:
-                ipv4_urlpath = urlopen(ipv4_urlweb)
-        except urllib2.HTTPError, err:
-                print ("Error URL Lookup: {}: {}".format(ipv4_urlweb,err.code))
-                sys.exit(1)
-        string = ipv4_urlpath.read().decode('utf-8')
-        pattern = re.compile('<a href=\"(\w*-\w*-\w*-\w*.pfx2as.gz)\">') #the pattern
-        ipv4pfx_filelist = pattern.findall(string)
-
-        if ipv4pfx_filelist:
-                latest_ipv4pfx_file = ipv4pfx_filelist.pop()
-                print("Found %s" % latest_ipv4pfx_file)
-                ipv4_url = "{}/{}".format(ipv4_urlweb, latest_ipv4pfx_file)
-                ipv4pfx_file = download_file(ipv4_url)
-                gzfilelist = ['/'.join([os_path, latest_ipv4pfx_file])]
-        else:
-                print ("No v4 routeviews found")
-                sys.exit(1)
-
+        gzfilelist = get_file(ipv4_urlweb)
         ipv6_urlweb = "http://data.caida.org/datasets/routing/routeviews6-prefix2as/{}/{}".format(year,month)
-        try:
-                ipv6_urlpath = urlopen(ipv6_urlweb)
-        except urllib2.HTTPError, err:
-                print ("Error URL Lookup: {}: {}".format(ipv6_urlweb,err.code))
-                sys.exit(1)
-        string = ipv6_urlpath.read().decode('utf-8')
-        pattern = re.compile('<a href=\"(\w*-\w*-\w*-\w*.pfx2as.gz)\">') #the pattern
-        ipv6pfx_filelist = pattern.findall(string)
-
-        if ipv6pfx_filelist:
-                latest_ipv6pfx_file = ipv6pfx_filelist.pop()
-                print("Found %s" % latest_ipv6pfx_file)
-                ipv6_url = "{}/{}".format(ipv6_urlweb, latest_ipv6pfx_file)
-                ipv6pfx_file = download_file(ipv6_url)
-
-                gzfilelist.append('/'.join([os_path, latest_ipv6pfx_file]))
-        else:
-                print ("No v6 routeviews found")
-                sys.exit(1)
+        gzfilelist += get_file(ipv6_urlweb)
 
         for gzip_path in gzfilelist:
                 print (gzip_path)
